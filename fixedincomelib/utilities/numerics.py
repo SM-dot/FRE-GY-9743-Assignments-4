@@ -108,20 +108,30 @@ class Interpolator1DPCP(Interpolator1D):
         assert self.extrap_method_ == ExtrapMethod.FLAT
 
     def interpolate(self, x: float) -> float:
-        #TODO
-        pass
+        # Left-continuous: x in (t_{i-1}, t_i] uses values[i]; beyond the last node stays flat.
+        idx = min(int(np.searchsorted(self.axis1_, x, side='left')), self.length_ - 1)
+        return float(self.values_[idx])
 
     def integrate(self, start_x: float, end_x: float) -> float:
-        #TODO
-        pass
+        return float(np.dot(self.values_, self.gradient_of_integrated_value_wrt_ordinate(start_x, end_x)))
 
     def gradient_wrt_ordinate(self, x: float) -> np.ndarray:
-        #TODO
-        pass
+        idx = min(int(np.searchsorted(self.axis1_, x, side='left')), self.length_ - 1)
+        grad = np.zeros(self.length_)
+        grad[idx] = 1.0
+        return grad
 
     def gradient_of_integrated_value_wrt_ordinate(self, start_x: float, end_x: float) -> np.ndarray:
-        #TODO
-        pass
+        # The integral is sum_i values[i] * (length of [start_x, end_x] inside segment i),
+        # so its derivative wrt values[i] is exactly that overlap length.
+        sign = 1.0
+        if end_x < start_x:
+            start_x, end_x, sign = end_x, start_x, -1.0
+        # Segment i spans (lower[i], upper[i]]; the first and last segments extend flat to +/- infinity.
+        lower = np.concatenate(([-np.inf], self.axis1_[:-1]))
+        upper = np.concatenate((self.axis1_[:-1], [np.inf]))
+        overlap = np.minimum(upper, end_x) - np.maximum(lower, start_x)
+        return sign * np.maximum(overlap, 0.0)
 
 
 
